@@ -2,7 +2,7 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.sql.*;
-import java.util.*;
+import java.util.Vector;
 import javax.swing.table.DefaultTableModel;
 
 class JT extends JFrame{
@@ -168,6 +168,7 @@ class JT extends JFrame{
 		}
 	}
 	void getTContent(String sql){
+		getColType();
 		ResultSet rs=null;
 		try{
 			rs = stmt.executeQuery(sql);
@@ -179,19 +180,72 @@ class JT extends JFrame{
 			}
 			
 			while(rs.next()){
-				Vector<String> v = new Vector<String>();
+				Vector v = new Vector();
+				int j = 0;
 				for(int i=1; i<=cc; i++){
-					String data = rs.getString(i);
-					v.add(data);
+					//String data = rs.getString(i);
+					if(types == null){
+						return;
+					} else {
+						if(types.get(j).contains("DATE")){
+							//pln("date형");
+							Date date = rs.getDate(i);
+							long timeInMilliSeconds = date.getTime();
+							java.sql.Date date1 = new java.sql.Date(timeInMilliSeconds);
+							Object data = (Object)date1;
+							//String data = rs.getString(i);
+							v.add(data);
+						} else if(types.get(j).contains("TIMESTAMP")){
+							//pln("timestamp형");
+							Timestamp data = rs.getTimestamp(i);
+							v.add(data);
+						} else{
+							String data = rs.getString(i);
+							v.add(data);
+						}
+					}
+					j++;
+					//v.add(data);
 				}
 				rowData.add(v);
 			}
+			types.clear();
 			//pln(columnNames.toString());
 			//pln(rowData.toString());
+		}catch(ArrayIndexOutOfBoundsException arrE){
+			pln("arrayIndex out of bounds: "+arrE);
 		}catch(SQLException se){
 			pln("ddlSql() 예외: "+se);
 		}
 	}
+	Vector<String> types = new Vector<String>();
+	void getColType(){
+		String selectedT = "";
+
+		if(tCombo.getSelectedItem() == null){
+			return;
+		}else{
+			selectedT = tCombo.getSelectedItem().toString()+"";
+		}
+		String sql = "select DATA_TYPE from ALL_TAB_COLUMNS where TABLE_NAME = '"+selectedT+"'";
+
+		ResultSet rs = null;
+		try{
+			rs = stmt.executeQuery(sql);
+			while(rs.next()){
+				String colType = rs.getString(1);
+				
+				types.add(colType);
+			}
+		} catch(SQLException se){
+			System.out.println("type exception: " + se);
+		} finally{
+			try{
+				if(rs!=null) rs.close();
+			} catch(SQLException se){
+			}
+		}
+	} // end of getType()
 
 	String getPkColumn(){
 		//String selected = tCombo.getSelectedItem().toString();
@@ -207,9 +261,9 @@ class JT extends JFrame{
 			while(rs.next()){
 				for(int i=1; i<=colsCount; i++){
 					pkColName = rs.getString(i);
-					pln("pkColName: "+pkColName);
 				}
 			}
+			//pln("무조건 찍어..pkColName: "+pkColName);
 			rs.close();
 		} catch(SQLException se){
 			pln("getPkColumn() 예외: "+se);
@@ -217,7 +271,7 @@ class JT extends JFrame{
 		return pkColName;
 	}
 	int getPkIndex(String pkColName){
-		int pkColIndex = 0;
+		int pkColIndex = -1;
 		for(int i=0; i<columnNames.size(); i++){
 			String colNames = columnNames.get(i);
 			//pln("colNames: "+colNames);
@@ -226,66 +280,15 @@ class JT extends JFrame{
 				break;
 				//pln("pkColIndex 번호: "+pkColIndex);
 			}
-			pkColIndex = -1;
+			//pkColIndex = -1;
 			//pln("pk 없는 경우 반환 -1:" + i);
 
 		}
 		return pkColIndex;
 	}
 	
-	// ??
-//	void sqlExcute(String sql){
-//		String[] sqlArr = sql.split(" ");
-//		// DDL
-//		if(sqlArr[0].equalsIgnoreCase("create") || sqlArr[0].equalsIgnoreCase("drop") || sqlArr[0].equalsIgnoreCase("alter") || sqlArr[0].equalsIgnoreCase("rename") || sqlArr[0].equalsIgnoreCase("truncate")){
-//			try{
-//				stmt.execute(sql);	// create table 존재하는 테이블이면 막기 추가
-//				pln(sqlArr[0]+"문이 실행되었습니다.");
-//			} catch(SQLException se){
-//				pln(sqlArr[0]+"문 실행실패: " + se);
-//			}
-//		} else if(sqlArr[0].equalsIgnoreCase("insert") || sqlArr[0].equalsIgnoreCase("update") || sqlArr[0].equalsIgnoreCase("delete")){
-//			try{ // DML
-//				int i = stmt.executeUpdate(sql);
-//				if(i>0) pln(i+"개의 row 수정("+sqlArr[0]+"문)");
-//				else pln("입력되지 않았습니다.");
-//			} catch(SQLException se){
-//				pln(sqlArr[0]+"문 수정실패: " + se);
-//			}
-//		}else if(sqlArr[0].equalsIgnoreCase("select")){
-//			//selectT(sql);
-//		} else if(sql.equalsIgnoreCase("exit")){
-//			closeAll();
-//			System.exit(0);
-//		}else{
-//			pln("다른 명령어를 입력해주세요.");
-//		}
-//		
-//	}
-//	void selectT(String sql){
-//		ResultSet rs;
-//		try{
-//			rs = stmt.executeQuery(sql);
-//			ResultSetMetaData rsmd = rs.getMetaData();
-//			cc = rsmd.getColumnCount();
-//            for(int i=1; i<=cc; i++){
-//				String cn = rsmd.getColumnName(i);
-//				columnNames.add(cn);
-//			}
-//			
-//			while(rs.next()){
-//				Vector<String> v = new Vector<String>();
-//				for(int i=1; i<=cc; i++){
-//					String data = rs.getString(i);
-//					v.add(data);
-//				}
-//				rowData.add(v);
-//			}
-//			rs.close();
-//		} catch(SQLException se){
-//			pln("selectT() 예외: "+se);
-//		}
-//	}
+	
+
 
 	void closeAll(){
 		try{
@@ -318,15 +321,22 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 	public void actionPerformed(ActionEvent e){ // tCombo event
 		Object obj = e.getSource(); 
 		String pkColName = jt.getPkColumn();
+		String sql = "";
 		if(obj == jt.tCombo){
 			jt.columnNames.clear();
 			jt.rowData.clear();
+			jt.types.clear();
 			jt.p31.removeAll();
-			//JComboBox jcb =(JComboBox)e.getSource();
-			//String selected = jcb.getSelectedItem().toString();
+
 			String selected = jt.tCombo.getSelectedItem().toString();
-			String sql = "select * from "+selected+" order by "+pkColName;
+//			if(pkColName.length() == 0){
+//				sql = "select * from "+selected;
+//			} else{
+//				sql = "select * from "+selected;//+" order by "+pkColName;
+//			}
+			sql = "select * from "+selected;
 			pln(selected);
+			//pln("선택된 테이블 select 문: "+sql);
 			//pln(sql);
 			jt.getTContent(sql);
 			jt.model.setDataVector(jt.rowData, jt.columnNames);
@@ -340,17 +350,15 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 		String word = "";
 		if( e.paramString().indexOf("Backspace") != -1){
 			word = jt.text1.getText();
-		}else if(e.getKeyCode() == 0){ // enter 눌러도 검색
+			pln("백스페이스"+word);
+		}else if(e.paramString().indexOf("Enter") != -1){ // enter 눌러도 검색
 			word = jt.text1.getText();
 			System.out.println("enter : "+word);
 		}else{
 			word = jt.text1.getText()+e.getKeyChar();
 			System.out.println("else : "+word);
 		}
-		pln(word);
-		//pln(jt.text1.getText()+e.getKeyChar());
-		//Object obj = e.getSource(); 
-
+		
 		String tSelected = jt.tCombo.getSelectedItem().toString();
 		String colSelected = jt.colCombo.getSelectedItem().toString();
 		String pkColName = jt.getPkColumn();
@@ -530,7 +538,8 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 			pln(""+selectedRow); // 0~..
 			for(int i=0; i<cc; i++){
 				Object data=jt.t.getValueAt(selectedRow, i);
-				jt.tf.get(i).setText((String)data);
+				jt.tf.get(i).setText(data+"");
+				//jt.tf.get(i).setText((String)data); // 원래 코드
 				//String data=jt.t.getValueAt(selectedRow, i).toString();
 				//jt.tf[i].setText(data);
 			}
@@ -647,14 +656,14 @@ JT.java
 5. exit 버튼 만들기
 	- 버튼 누르면 view 삭제하고 닫고
 	- x키 눌러도 삭제하고 나가기
-6. update
-	if(BINARY_FLOAT, BINARY_DOUBLE, NUMBER(P,S))
-	1) 숫자형 데이터 따옴표X
-	2) 문자형, 날짜형, 이진 데이터 타입 홑따옴표 붙여주기
-	7. insert
+	6. update --> 해결
+		if(BINARY_FLOAT, BINARY_DOUBLE, NUMBER(P,S)) --> 해결
+		1) 숫자형 데이터 따옴표X --> 해결
+		2) 문자형, 날짜형, 이진 데이터 타입 홑따옴표 붙여주기 --> 해결
+	7. insert --> 해결
 		1) primary key 비활성화 박스 열어주는 기능 --> 해결
 		2) 숫자에서 공백나오면 null --> 해결
-		3) 추가 누르고 밑에 텍스트 박스 리셋
+		3) 추가 누르고 밑에 텍스트 박스 리셋 --> 해결
 			- pk값 저장 
 			- tf 쫙 열어줘
 			- pk text를 메소드로넘겨줘
@@ -668,11 +677,15 @@ JT.java
    create table cc()
 10. drop -> ignore / create / where
 	11. 검색 기능 backspace 무시하기 --> 해결
-12. Vector<String> colType 생성해서 table select 할 때 타입 담기 ??
+	12. Vector<String> types 생성해서 table select 할 때 타입 담기 ?? --> 해결 이게 15번
 13. 참조키 칼럼은 tf말고 콤보박스로 선택할 수 있게....(이건 많이 어렵겠다)
 	14. 한글은 한글조합이 끝나기 전엔 인식이 안되서 검색에 지장이 생김 --> 해결
 		- 검색 엔터눌러도 검색하능하도록 변경 --> 해결
-
+	15. select문으로 테이블 보여줄 때, toString()말고 각각 데이터 형으로 뽑아오기 --> 해결
+		- 다른 데이터 형들은 String으로 뽑아와도 큰 탈이 없기 때문에 String으로 추출하고
+		  Date형 만 따로 출력했음
+16. 기본키 정렬기능
+17. 날짜 년도까지 검색
 
 select * from 뷰이름
 create view 뷰이름 as select * from EMP
@@ -705,7 +718,9 @@ create view 뷰이름 as select * from EMP
 5.
 	1) SELECT data_type from all_tab_columns where table_name='tnames' and column_name = '';
 
-
+6. Date 타입
+	1) java.util.Date : 년/월/일 : 시/분/초
+	2) java.sql.Date  : 년/월/일
 
 
 
