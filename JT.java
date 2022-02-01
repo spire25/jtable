@@ -10,10 +10,10 @@ class JT extends JFrame{
 	JTable t;
 	JScrollPane sp;
 	JComboBox tCombo, colCombo;
-	JTextField text1;
-	JPanel p1, p2, p3, p31,p32;
-	JButton bInsert, bUpdate, bDelete;
-	//JTextField tf[];				// 칼럼 개수만큼 텍스트 박스 만들기
+	JTextField text1, tfSql;
+	JLabel lbSql;
+	JPanel p1, p2, p3, p31, p3Center, p32;
+	JButton bInsert, bUpdate, bDelete, bSql;
 	Vector<JTextField> tf = new Vector<JTextField>();
 	DefaultTableModel model;
 
@@ -49,24 +49,31 @@ class JT extends JFrame{
 		cp = getContentPane();
 		model = new DefaultTableModel();
 		t = new JTable(model);
-//		getTContent("select * from DEPT");
 		model.setDataVector(rowData, columnNames);
 		sp = new JScrollPane(t);
 		p1 = new JPanel(new GridLayout(1,2));
 		p3 = new JPanel(new BorderLayout());
 		p31 = new JPanel(new GridLayout(1,cc));// 여기 열 값은 t의 columnCount()로
+		p3Center = new JPanel(new BorderLayout());
 		p32 = new JPanel(new FlowLayout());
 
 		tCombo = new JComboBox();
 		colCombo = new JComboBox();				// JComboBox(Vector name)
 		text1 = new JTextField();				// keyboard 이벤트 추가해주기
+		tfSql = new JTextField();
 		bInsert = new JButton("추가");
 		bUpdate = new JButton("수정");
 		bDelete = new JButton("삭제");
-
+		bSql = new JButton("실행");
+		lbSql = new JLabel(" SQL문 ");
+		
+		// size 변경
 		bInsert.setPreferredSize(new Dimension(120, 30));
 		bUpdate.setPreferredSize(new Dimension(120, 30));
 		bDelete.setPreferredSize(new Dimension(120, 30));
+		bSql.setPreferredSize(new Dimension(100, 25));
+		lbSql.setPreferredSize(new Dimension(80, 25));
+		lbSql.setHorizontalAlignment(SwingConstants.CENTER); 
 
 		// event 추가
 		bInsert.addMouseListener(new MyHandler(this));
@@ -74,19 +81,25 @@ class JT extends JFrame{
 		bDelete.addMouseListener(new MyHandler(this));
 		tCombo.addActionListener(new MyHandler(this));
 		text1.addKeyListener(new MyHandler(this));
+		//https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=yunjoo727&logNo=80158213642
+		//tfSql 앞에 레이블 hover하면 sql 정확하게 입력하라고 안내문구 띄워주기 ( 안되면 그냥 텍스트 박스 안에.. )
+		//bSql.add.... //tfSql 옆에 버튼 누르면 검색 추가하기
 		t.addMouseListener(new MyHandler(this));
-		//t.addDocumentListener(new MyHandler(this));
 		
 		// 컨테이너에 추가
 		cp.add(p1, BorderLayout.NORTH);
 		cp.add(sp, BorderLayout.CENTER);
 		cp.add(p3, BorderLayout.SOUTH);
 		p3.add(p31, BorderLayout.NORTH);
+		p3.add(p3Center, BorderLayout.CENTER);
 		p3.add(p32, BorderLayout.SOUTH);
 		p1.add(tCombo);p1.add(colCombo);p1.add(text1);
+		p3Center.add(lbSql, BorderLayout.WEST);
+		p3Center.add(tfSql, BorderLayout.CENTER);
+		p3Center.add(bSql, BorderLayout.EAST);
 		p32.add(bInsert);p32.add(bUpdate);p32.add(bDelete);
 		addTextField();
-		
+
 		getTname();
 		getTContent("select * from "+tableNames.get(1)); //pln(tableNames.get(1));
 		setTCombo();
@@ -671,7 +684,9 @@ JT.java
 			- 다르면 그냥 삽입 ㄱㄱ
 		4) 전부 null이면 들어가지 않게 막기 --> 해결
 8. 이중 search
-	1) 뷰생성
+	1) 뷰생성 
+		1-1) select문을 칠때만 뷰 생성
+		1-2) 어.. 그래... 검색에서 뷰를 검색하도록... -> 테이블도.. 콤보박스에 올려야하는데
 9. create 
    create table cc ()
    create table cc()
@@ -685,7 +700,9 @@ JT.java
 		- 다른 데이터 형들은 String으로 뽑아와도 큰 탈이 없기 때문에 String으로 추출하고
 		  Date형 만 따로 출력했음
 16. 기본키 정렬기능
-17. 날짜 년도까지 검색
+17. 날짜 년도까지 검색 
+	- (select로 뽑아와서 그거 getString으로 가져오고 그거를 
+	- 아니야 그럼 숫자만 쓰면 ,,,안되자늠.. 그럼 년도 앞자리는 검색되긴 하는데.. 다시 생각해보기
 
 select * from 뷰이름
 create view 뷰이름 as select * from EMP
