@@ -60,12 +60,17 @@ class JT extends JFrame{
 		tCombo = new JComboBox();
 		colCombo = new JComboBox();				// JComboBox(Vector name)
 		text1 = new JTextField();				// keyboard 이벤트 추가해주기
-		tfSql = new JTextField();
+		tfSql = new JTextField("사용할 sql문을 입력해주세요.");
 		bInsert = new JButton("추가");
 		bUpdate = new JButton("수정");
 		bDelete = new JButton("삭제");
 		bSql = new JButton("실행");
-		lbSql = new JLabel(" SQL문 ");
+		lbSql = new JLabel("SQL문");
+
+		// font
+		//Font font = new Font("맑은고딕", null, 15);
+		//tfSql.setFont(font);
+		tfSql.setForeground(Color.GRAY);
 		
 		// size 변경
 		bInsert.setPreferredSize(new Dimension(120, 30));
@@ -83,7 +88,8 @@ class JT extends JFrame{
 		text1.addKeyListener(new MyHandler(this));
 		//https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=yunjoo727&logNo=80158213642
 		//tfSql 앞에 레이블 hover하면 sql 정확하게 입력하라고 안내문구 띄워주기 ( 안되면 그냥 텍스트 박스 안에.. )
-		//bSql.add.... //tfSql 옆에 버튼 누르면 검색 추가하기
+		tfSql.addMouseListener(new MyHandler(this));
+		bSql.addMouseListener(new MyHandler(this));//.... //tfSql 옆에 버튼 누르면 검색 추가하기
 		t.addMouseListener(new MyHandler(this));
 		
 		// 컨테이너에 추가
@@ -178,6 +184,11 @@ class JT extends JFrame{
 //			tCombo.setSelectedIndex(rc);
 		}catch(SQLException se){
 			pln("getTname() Excep: " + se);
+		} finally{
+			try{
+				if(rs!=null) rs.close();
+			} catch(SQLException se){
+			}
 		}
 	}
 	void getTContent(String sql){
@@ -501,7 +512,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 				// update 실행
 				int j = jt.stmt.executeUpdate(update_sql);
 				if(j>0){
-					String sql2 = "select * from "+selectedT+" order by "+pkColName;		
+					String sql2 = "select * from "+selectedT;		
 					jt.columnNames.clear();
 					jt.rowData.clear();
 					jt.getTContent(sql2);
@@ -556,6 +567,33 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 				//String data=jt.t.getValueAt(selectedRow, i).toString();
 				//jt.tf[i].setText(data);
 			}
+		} else if(obj == jt.tfSql){
+			String str = jt.tfSql.getText().toString();
+			String[] strArr = str.split(" ");
+			if(strArr[0].equalsIgnoreCase("사용할")){
+				jt.tfSql.setText("");
+				jt.tfSql.setForeground(Color.BLACK);
+			}
+		}else if(obj == jt.bSql){ // sql문 실행 Button
+			String sql = "";
+			String sqlStr = jt.tfSql.getText().toString();
+			//pln("입력한 내용: "+sqlStr);
+			
+			// 뒤 ; 붙어있으면 떼어주기
+			int i = sqlStr.indexOf(";");
+			int size = sqlStr.length();
+			if(i >= 0){
+				if(i == (size-1)){
+					sql = sqlStr.substring(0, size-1);
+				} else
+					sql = sqlStr;
+			} else{
+				sql = sqlStr;
+			}
+			pln("결과 sql: "+sql);
+			
+			String kind = sqlKinds(sql);
+			sqlExe(kind, sql);
 		}
 	}
 	
@@ -607,6 +645,83 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 			jt.tf.get(i).setText("");
 		}
 	}
+
+
+	// sql execute문 구분하기
+	String sqlKinds(String sql){
+		String[] sqlArr = sql.split(" ");
+		String str = sqlArr[0];
+		pln("sqlArr[0] : "+ str);
+
+		if(str.equalsIgnoreCase("select")){
+			str = "executeQuery";
+		} else if((str.equalsIgnoreCase("update")) || (str.equalsIgnoreCase("insert")) || (str.equalsIgnoreCase("delete"))){
+			pln("executeUpdate");
+			str = "executeUpdate";
+		} else {
+			pln("execute: create, delete, alter, ...");
+			//str = str;
+		}
+		return str;
+	}
+	// sql 구분
+	void sqlExe(String kind, String sql){
+		if(kind.equals("executeQuery")){
+			exeQuery(sql);
+		} else if(kind.equals("executeUpdate")){
+			exeUpdate(sql);
+		} else if(kind.equals("execute")){
+			exe(sql);
+		}
+	}
+	void exeQuery(String sql){
+		// 이것도 따로 해야하네
+		// view 만들기, 그리고 뷰도 콤보박스에 넣어주기
+		jt.getTContent(sql);
+	}
+	void exeUpdate(String sql){
+//		String[] sqlArr = sql.split("\\bfrom\\b");
+//		String str = arrayJoin(" ", sqlArr);
+		int index = sql.indexOf("from"); // +4
+		String str = sql.substring(index+4);
+		String[] strArr = str.split(" ");
+		String tname = strArr[0].trim();
+
+
+		try{
+			int j = jt.stmt.executeUpdate(sql);
+			if(j>0){
+				String sql2 = "select * from "+tname;
+				jt.columnNames.clear();
+				jt.rowData.clear();
+				jt.getTContent(sql2);
+				jt.model.setDataVector(jt.rowData, jt.columnNames);
+				pln("exeUpdate 성공");
+				clearTf(jt.t.getColumnCount());
+			} else {
+				pln("exeUpdate 실패 알림창");
+			}
+		} catch(SQLException se){
+			System.out.println("exeUpdate 예외: "+se);
+			pln("exeUpdate 실패 알림창");
+		}
+	}
+	void exe(String sql){
+		// tname콤보박스 갱신해야함
+		int index = sql.indexOf("from");
+		String str = sql.substring(index+4);
+		String[] strArr = str.split(" ");
+		String tname = strArr[0].trim();
+		pln("tname");
+//		try{
+//			jt.stmt.execute(sql);
+//			pln("exe() 성공");
+//		} catch(SQLException se){
+//			System.out.println("exe() 예외: "+se);
+//			pln("exe() 실패 알림창");
+//		}
+	}
+
 	void p(String str){
 		System.out.print(str);
 	}
