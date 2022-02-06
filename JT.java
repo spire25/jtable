@@ -20,6 +20,7 @@ class JT extends JFrame{
 	Vector<String> tableNames = new Vector<String>();
 	Vector<String> columnNames = new Vector<String>();
 	Vector<Vector> rowData = new Vector<Vector>();
+	Vector<String> types = new Vector<String>();
 	int cc;
 	String tname;
 
@@ -107,7 +108,7 @@ class JT extends JFrame{
 		addTextField();
 
 		getTname();
-		getTContent("select * from "+tableNames.get(1)); //pln(tableNames.get(1));
+		getTContent("select * from "+tableNames.get(1), tableNames.get(1)); //pln(tableNames.get(1));
 		setTCombo();
 		setUI();
 	}
@@ -191,8 +192,8 @@ class JT extends JFrame{
 			}
 		}
 	}
-	void getTContent(String sql){
-		getColType();
+	void getTContent(String sql, String tname){
+		getColType(tname);
 		ResultSet rs=null;
 		try{
 			rs = stmt.executeQuery(sql);
@@ -202,7 +203,6 @@ class JT extends JFrame{
 				String cn = rsmd.getColumnName(i);
 				columnNames.add(cn);
 			}
-			
 			while(rs.next()){
 				Vector v = new Vector();
 				int j = 0;
@@ -237,19 +237,20 @@ class JT extends JFrame{
 			//pln(columnNames.toString());
 			//pln(rowData.toString());
 		}catch(ArrayIndexOutOfBoundsException arrE){
-			pln("arrayIndex out of bounds: "+arrE);
+			pln("getTContent()예외 arrayIndex out of bounds: "+arrE);
 		}catch(SQLException se){
 			pln("ddlSql() 예외: "+se);
 		}
 	}
-	Vector<String> types = new Vector<String>();
-	void getColType(){
+	
+	void getColType(String tname){
 		String selectedT = "";
 
 		if(tCombo.getSelectedItem() == null){
 			return;
 		}else{
-			selectedT = tCombo.getSelectedItem().toString()+"";
+			//selectedT = tCombo.getSelectedItem().toString()+"";
+			selectedT = tname;
 		}
 		String sql = "select DATA_TYPE from ALL_TAB_COLUMNS where TABLE_NAME = '"+selectedT+"'";
 
@@ -362,7 +363,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 			pln(selected);
 			//pln("선택된 테이블 select 문: "+sql);
 			//pln(sql);
-			jt.getTContent(sql);
+			jt.getTContent(sql, selected);
 			jt.model.setDataVector(jt.rowData, jt.columnNames);
 		}
 		jt.addTextField();
@@ -393,7 +394,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 		
 		jt.columnNames.clear();
 		jt.rowData.clear();
-		jt.getTContent(sql);
+		jt.getTContent(sql, tSelected);
 		//pln(colSelected);
 		//pln(tSelected);
 		jt.model.setDataVector(jt.rowData, jt.columnNames);
@@ -458,7 +459,8 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 						String sql2 = "select * from "+selectedT+" order by "+pkColName;		
 						jt.columnNames.clear();
 						jt.rowData.clear();
-						jt.getTContent(sql2);
+						jt.types.clear();
+						jt.getTContent(sql2, selectedT);
 						jt.model.setDataVector(jt.rowData, jt.columnNames);
 						if(pkIndex>=0){
 							jt.tf.get(pkIndex).setEnabled(false);
@@ -515,7 +517,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 					String sql2 = "select * from "+selectedT;		
 					jt.columnNames.clear();
 					jt.rowData.clear();
-					jt.getTContent(sql2);
+					jt.getTContent(sql2, selectedT);
 					jt.model.setDataVector(jt.rowData, jt.columnNames);
 					pln("update 성공");
 					clearTf(jt.t.getColumnCount());
@@ -544,7 +546,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 					String sql2 = "select * from "+selectedT+" order by "+pkColName;		
 					jt.columnNames.clear();
 					jt.rowData.clear();
-					jt.getTContent(sql2);
+					jt.getTContent(sql2, selectedT);
 					jt.model.setDataVector(jt.rowData, jt.columnNames);
 					pln("delete 성공");
 					clearTf(jt.t.getColumnCount());
@@ -657,7 +659,7 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 			str = "executeQuery";
 		} else if((str.equalsIgnoreCase("update")) || (str.equalsIgnoreCase("insert")) || (str.equalsIgnoreCase("delete"))){
 			pln("executeUpdate");
-			str = "executeUpdate";
+			//str = "executeUpdate";
 		} else {
 			pln("execute: create, delete, alter, ...");
 			//str = str;
@@ -668,8 +670,8 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 	void sqlExe(String kind, String sql){
 		if(kind.equals("executeQuery")){
 			exeQuery(sql);
-		} else if(kind.equals("executeUpdate")){
-			exeUpdate(sql);
+		} else if(kind.equalsIgnoreCase("update") || kind.equalsIgnoreCase("insert") || kind.equalsIgnoreCase("delete")){
+			exeUpdate(sql, kind);
 		} else if(kind.equals("execute")){
 			exe(sql);
 		}
@@ -677,16 +679,33 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 	void exeQuery(String sql){
 		// 이것도 따로 해야하네
 		// view 만들기, 그리고 뷰도 콤보박스에 넣어주기
-		jt.getTContent(sql);
-	}
-	void exeUpdate(String sql){
-//		String[] sqlArr = sql.split("\\bfrom\\b");
-//		String str = arrayJoin(" ", sqlArr);
+
 		int index = sql.indexOf("from"); // +4
 		String str = sql.substring(index+4);
-		String[] strArr = str.split(" ");
-		String tname = strArr[0].trim();
+		String tname = str.trim();
+		pln("입력한 tname: " + tname);
 
+		jt.columnNames.clear();
+		jt.rowData.clear();
+		//jt.types.clear();
+		jt.getTContent(sql, tname);
+		jt.model.setDataVector(jt.rowData, jt.columnNames);
+		jt.addTextField();
+		//setTCombo(); // 이중검색 사용시
+	}
+	void exeUpdate(String sql, String kind){ // update delete insert
+		// update DEPT set DNAME='머야' where DEPTNO=68
+		// insert into DD values(7, 'sp', sysdate)
+		// delete DD where NO=5
+		String tname = "";
+		if(kind.equalsIgnoreCase("update") || kind.equalsIgnoreCase("delete")){
+			String[] str = sql.split(" ");
+			tname = str[1].trim();
+		} else{
+			String[] str = sql.split(" ");
+			tname = str[2].trim();
+		}
+		pln("table명 : "+tname);
 
 		try{
 			int j = jt.stmt.executeUpdate(sql);
@@ -694,10 +713,11 @@ class MyHandler extends MouseAdapter implements ActionListener, KeyListener{
 				String sql2 = "select * from "+tname;
 				jt.columnNames.clear();
 				jt.rowData.clear();
-				jt.getTContent(sql2);
+				jt.getTContent(sql2, tname);
 				jt.model.setDataVector(jt.rowData, jt.columnNames);
 				pln("exeUpdate 성공");
-				clearTf(jt.t.getColumnCount());
+				//clearTf(jt.t.getColumnCount());
+				//jt.addTextField();
 			} else {
 				pln("exeUpdate 실패 알림창");
 			}
